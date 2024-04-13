@@ -1151,6 +1151,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dotenv@npm:^16.4.5":
+  version: 16.4.5
+  resolution: "dotenv@npm:16.4.5"
+  checksum: 55a3134601115194ae0f924e54473459ed0d9fc340ae610b676e248cca45aa7c680d86365318ea964e6da4e2ea80c4514c1adab5adb43d6867fb57ff068f95c8
+  languageName: node
+  linkType: hard
+
 "drizzle-orm@npm:^0.30.8":
   version: 0.30.8
   resolution: "drizzle-orm@npm:0.30.8"
@@ -2472,6 +2479,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:6.21.0"
     cheerio: "npm:^1.0.0-rc.12"
     date-fns: "npm:^3.6.0"
+    dotenv: "npm:^16.4.5"
     drizzle-orm: "npm:^0.30.8"
     esbuild: "npm:0.19.12"
     eslint: "npm:8.57.0"

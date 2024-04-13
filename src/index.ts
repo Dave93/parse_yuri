@@ -2,8 +2,169 @@
 // NOTE: You can remove the first line if you don't plan to release an
 // executable package. E.g. code that can be used as cli like prettier or eslint
 
-const main = () => {
-  console.log("hello Node.js and Typescript world :]");
+import puppeteer, { Page } from "puppeteer";
+import * as cheerio from "cheerio";
+import path from "path";
+import { format, compareAsc } from 'date-fns'
+import dotenv from "dotenv";
+dotenv.config();
+
+
+const main = async () => {
+
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+  const page = await browser.newPage();
+  console.log("new page opened");
+  await page.goto("https://auth.dodois.io/");
+  console.log("auth.dodois.io opened");
+  await page.setViewport({ width: 1920, height: 1080 });
+  await page.screenshot({
+    path: path.resolve(__dirname, "auth.dodois.png"),
+    fullPage: true,
+  });
+  await page.locator("input[name=Username]").fill(process.env.LOGIN!);
+  await page.locator("input[type=password]").fill(process.env.PASSWORD!);
+
+  await page.select("select[name=CountryCode]", "Uz");
+
+  await page.screenshot({
+    path: path.resolve(__dirname, "auth.dodois_filled.png"),
+    fullPage: true,
+  });
+  console.log("form is filled");
+  await page.click("button[type=submit]");
+  console.log("submit is clicked");
+  await page.waitForSelector(".profile__main");
+  await page.goto("https://callcenter.dodopizza.uz/");
+  console.log("https://callcenter.dodopizza.uz opened");
+  console.log("wait for orders");
+  await page.waitForSelector("#showMyOrders");
+  console.log("found orders");
+  await page.click("#showMyOrders");
+  console.log("clicked orders");
+
+  const result = await page.$$eval(".dashboard-table tbody tr", async (rows: HTMLTableRowElement[]) => {
+    const promises = rows.map(async (row) => {
+      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      const onClickAttr = row.getAttribute("onclick");
+      if (!onClickAttr) {
+        return {
+
+        };
+      }
+
+      const regex = /[0-9A-F]{32}/;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      const match = onClickAttr!.match(regex);
+      if (match) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const orderId = match[0];
+        console.log('row', row);
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        const orderFromCell = row.querySelector(".b-table__col:nth-child(7)");
+        console.log('orderFromCell', orderFromCell);
+
+        if (orderFromCell) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          const orderFrom = orderFromCell.querySelector("span:first-child");
+          console.log('orderFrom', orderFrom);
+          if (orderFrom) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+            const orderFromText = orderFrom.textContent?.trim();
+            console.log('orderFromText', orderFromText);
+            if (orderFromText) {
+              const regex = /^(\D+)\s\d+$/;
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+              const orderFromTextMatch = orderFromText.match(regex);
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+              if (orderFromTextMatch) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+                const orderFromTextMatch2 = orderFromTextMatch[1];
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+                switch (orderFromTextMatch2?.toLocaleLowerCase()) {
+                  case "узум":
+                    return {
+                      orderId,
+                      order_from: 'uzum'
+                    };
+                  case "exp":
+                    return {
+                      orderId,
+                      order_from: 'express'
+                    };
+                  case "yan":
+                    return {
+                      orderId,
+                      order_from: 'yandex'
+                    };
+                  default:
+                    console.log("Unknown order from", orderFromTextMatch2);
+                    return {
+                      orderId
+                    };
+                }
+              } else {
+                console.log("No match found");
+                return {
+                  orderId
+                };
+              }
+            } else {
+              return {
+                orderId
+              }
+            }
+          }
+        }
+
+        return {
+          orderId,
+        };
+      } else {
+        console.error("No match found");
+        return {
+
+        };
+      }
+    });
+
+    return await Promise.all(promises);
+  });
+
+  // console.log('result', result)
+
+  const orders = result.filter(item => { return item.order_from !== undefined });
+
+  console.log('orders', orders)
+
+  const ordersData = await page.evaluate(async (orders) => {
+    let result = {};
+
+    for await (const order of orders) {
+      result[order.orderId] = await new Promise((resolve, reject) => {
+        ajax.postJson('/Orders/GetLog', null, { orderUUId: order.orderId }, (data) => {
+          console.log('data', data)
+          resolve({
+            logs: data.logs,
+            from: order.order_from
+          });
+        }, (error) => {
+          reject(error);
+        })
+      });
+
+    }
+
+    return result;
+  }, orders)
+
+  console.log('ordersData', ordersData)
+  await new Promise((resolve) => { setTimeout(resolve, 10000) });
 };
 
 // This was just here to force a linting error for now to demonstrate/test the

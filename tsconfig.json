@@ -13,7 +13,8 @@
     "declaration": true,
     "sourceMap": true,
     "resolveJsonModule": true,
+    "lib": ["ES2020", "DOM"]
   },
   "include": ["src", "test"],
-  "exclude": ["dist", "bundle", "node_modules"],
+  "exclude": ["dist", "bundle", "node_modules"]
 }
